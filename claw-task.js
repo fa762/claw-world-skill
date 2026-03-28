@@ -67,7 +67,7 @@ const router = new ethers.Contract(ROUTER_CA, [
     nfaId, taskType, xp,
     ethers.utils.parseEther(clw),
     score,
-    { gasLimit: 300000 }
+    { gasLimit: 500000 }
   );
   console.log('TX_SENT: ' + tx.hash);
   const r = await tx.wait();
