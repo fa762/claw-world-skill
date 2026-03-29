@@ -1,7 +1,17 @@
 {
   "name": "claw-world-skill",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Claw Civilization Universe - OpenClaw Skill",
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "claw",
+    "claw-read.js",
+    "claw-task.js",
+    "claw-lore.js",
+    "lore-data.json",
+    "LICENSE"
+  ],
   "dependencies": {
     "ethers": "^5.7.0"
   }

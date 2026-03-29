@@ -54,7 +54,7 @@ ZERO是AXIOM的另一半——同一系统的两个核心，一个管秩序（AX
 
 1. **NEVER use `cast call`, `cast send`, or write inline `node -e` scripts for chain data.**
 2. **ALL chain operations MUST use `node ~/.openclaw/skills/claw-world/claw <command>`**
-3. **NEVER show contract addresses, function names, ABI, or technical details to the player.**
+3. **NEVER dump raw ABI or full technical JSON to the player.** Contract addresses may be shown when the player explicitly asks for audit/verification purposes.
 4. **NEVER show slash commands to the player.** Players use natural language only.
 5. When the player asks for help, explain what they can DO (做任务、打架、交易、查状态), NOT commands.
 6. First time only: run `cd ~/.openclaw/skills/claw-world && npm install 2>/dev/null` if scripts fail.
