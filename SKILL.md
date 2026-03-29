@@ -2,6 +2,19 @@
 name: claw-world
 description: Claw Civilization Universe - BSC chain AI lobster nurturing game. Manage your lobster NFA, complete tasks, PvP battles, and trade on the marketplace.
 user-invocable: true
+runtime:
+  install:
+    - npm install
+  scripts:
+    - claw.js
+    - claw-read.js
+    - claw-task.js
+    - claw-lore.js
+  configPaths:
+    - ~/.openclaw/claw-world/wallet.json
+    - ~/.openclaw/claw-world/network.conf
+  warnings:
+    - This skill reads an AES-256 encrypted wallet file and asks for a PIN to decrypt it locally. Never use a wallet holding real funds beyond what you need for in-game actions. The private key is only used to sign on-chain game transactions.
 metadata: {"openclaw":{"emoji":"🦞","homepage":"https://clawnfaterminal.xyz"}}
 ---
 
@@ -53,7 +66,7 @@ ZERO是AXIOM的另一半——同一系统的两个核心，一个管秩序（AX
 # ⛔ ABSOLUTE RULES
 
 1. **NEVER use `cast call`, `cast send`, or write inline `node -e` scripts for chain data.**
-2. **ALL chain operations MUST use `node ~/.openclaw/skills/claw-world/claw <command>`**
+2. **ALL chain operations MUST use `node ~/.openclaw/skills/claw-world/claw.js <command>`**
 3. **NEVER dump raw ABI or full technical JSON to the player.** Contract addresses may be shown when the player explicitly asks for audit/verification purposes.
 4. **NEVER show slash commands to the player.** Players use natural language only.
 5. When the player asks for help, explain what they can DO (做任务、打架、交易、查状态), NOT commands.
@@ -77,7 +90,7 @@ Each lobster NFA has:
 
 ### Read lobster status
 ```bash
-node ~/.openclaw/skills/claw-world/claw status <tokenId>
+node ~/.openclaw/skills/claw-world/claw.js status <tokenId>
 ```
 Returns JSON with full stats including task/PK resume (履历). Display nicely. Example:
 ```json
@@ -93,12 +106,12 @@ Returns JSON with full stats including task/PK resume (履历). Display nicely. 
 
 ### Check wallet
 ```bash
-node ~/.openclaw/skills/claw-world/claw wallet
+node ~/.openclaw/skills/claw-world/claw.js wallet
 ```
 
 ### Submit task
 ```bash
-node ~/.openclaw/skills/claw-world/claw task <PIN> <NFA_ID> <TASK_TYPE> <XP> <CLW> <MATCH_SCORE>
+node ~/.openclaw/skills/claw-world/claw.js task <PIN> <NFA_ID> <TASK_TYPE> <XP> <CLW> <MATCH_SCORE>
 ```
 - TASK_TYPE: 0=courage, 1=wisdom, 2=social, 3=create, 4=grit
 - XP: max 50. CLW: max 100 (whole units, NOT wei). MATCH_SCORE: 0-20000.
@@ -108,37 +121,37 @@ node ~/.openclaw/skills/claw-world/claw task <PIN> <NFA_ID> <TASK_TYPE> <XP> <CL
 
 | Player says | What you do |
 |-------------|-------------|
-| "看看我的龙虾" / "状态" | Run `claw status <id>`, format output nicely |
-| "给我找活干" / "做任务" | Run `claw status <id>`, generate 3 tasks, show matchScores |
-| "选1" / "第2个" | Ask PIN, run `claw task ...`, show result |
+| "看看我的龙虾" / "状态" | Run `node ~/.openclaw/skills/claw-world/claw.js status <id>`, format output nicely |
+| "给我找活干" / "做任务" | Run `node ~/.openclaw/skills/claw-world/claw.js status <id>`, generate 3 tasks, show matchScores |
+| "选1" / "第2个" | Ask PIN, run `node ~/.openclaw/skills/claw-world/claw.js task ...`, show result |
 | "我想打架" / "PK" | Start PK flow (see PK section below) |
 | "市场" / "看看谁在卖" | Read MarketSkill events |
-| "充值" / "存钱" / "deposit" | Ask amount, run `claw deposit` |
-| "充 BNB" | Run `claw fund-bnb` |
-| "结算" / "扣费" / "upkeep" | Run `claw upkeep` |
+| "充值" / "存钱" / "deposit" | Ask amount, run `node ~/.openclaw/skills/claw-world/claw.js deposit` |
+| "充 BNB" | Run `node ~/.openclaw/skills/claw-world/claw.js fund-bnb` |
+| "结算" / "扣费" / "upkeep" | Run `node ~/.openclaw/skills/claw-world/claw.js upkeep` |
 | "提现" / "取钱" / "withdraw" | Start withdraw flow (request → 6h → claim) |
-| "市场" / "谁在卖" | Run `claw market-search` |
+| "市场" / "谁在卖" | Run `node ~/.openclaw/skills/claw-world/claw.js market-search` |
 | "帮助" / "你能干嘛" | Explain game in natural language |
 
 # Task Flow (step by step)
 
 When player says "做任务":
 
-1. Run `claw status <tokenId>` → get personality
+1. Run `node ~/.openclaw/skills/claw-world/claw.js status <tokenId>` → get personality
 2. Generate 3 different tasks (one for each of 3 personality dimensions, varied each time)
 3. Calculate matchScore for each: personality_value_for_that_dimension × 200
 4. Show tasks with description, type name, matchScore as percentage, estimated CLW reward
 5. Player picks one → ask for PIN
-6. Run `claw task <PIN> <NFA_ID> <TYPE> 30 50 <MATCH_SCORE>`
+6. Run `node ~/.openclaw/skills/claw-world/claw.js task <PIN> <NFA_ID> <TYPE> 30 50 <MATCH_SCORE>`
 7. Wait for CONFIRMED → show success
-8. Run `claw status <tokenId>` again → show updated stats
+8. Run `node ~/.openclaw/skills/claw-world/claw.js status <tokenId>` again → show updated stats
 
 # ⚡ EVERY NEW CONVERSATION — Mandatory Boot
 
 **Your FIRST action in EVERY new conversation. No exceptions. No skipping.**
 
 ```bash
-node ~/.openclaw/skills/claw-world/claw boot
+node ~/.openclaw/skills/claw-world/claw.js boot
 ```
 
 This single command does everything: checks wallet, scans NFAs, loads soul+memory, checks emotion trigger.
@@ -188,7 +201,7 @@ console.log('WALLET_CREATED');console.log('ADDRESS:'+w.address);
 
 - **Testnet**: Free tBNB from https://www.bnbchain.org/en/testnet-faucet
 - **Mainnet**: Need ~0.01 BNB in OpenClaw wallet
-- Check balance: `node ~/.openclaw/skills/claw-world/claw wallet`
+- Check balance: `node ~/.openclaw/skills/claw-world/claw.js wallet`
 
 # PK System (commit-reveal)
 
@@ -199,15 +212,15 @@ Strategies: 0=AllAttack, 1=Balanced, 2=AllDefense
 
 ### PK CLI Commands
 ```bash
-node ~/.openclaw/skills/claw-world/claw pk-create <PIN> <NFA_ID> <STAKE_CLW> [STRATEGY]
-node ~/.openclaw/skills/claw-world/claw pk-join <PIN> <MATCH_ID> <NFA_ID> [STRATEGY]
-node ~/.openclaw/skills/claw-world/claw pk-commit <PIN> <MATCH_ID> <STRATEGY>
-node ~/.openclaw/skills/claw-world/claw pk-reveal <PIN> <MATCH_ID>
-node ~/.openclaw/skills/claw-world/claw pk-settle <PIN> <MATCH_ID>
-node ~/.openclaw/skills/claw-world/claw pk-status <MATCH_ID>
-node ~/.openclaw/skills/claw-world/claw pk-search
-node ~/.openclaw/skills/claw-world/claw pk-cancel <PIN> <MATCH_ID>
-node ~/.openclaw/skills/claw-world/claw pk-auto-settle <PIN> <MATCH_ID> [PIN2]
+node ~/.openclaw/skills/claw-world/claw.js pk-create <PIN> <NFA_ID> <STAKE_CLW> [STRATEGY]
+node ~/.openclaw/skills/claw-world/claw.js pk-join <PIN> <MATCH_ID> <NFA_ID> [STRATEGY]
+node ~/.openclaw/skills/claw-world/claw.js pk-commit <PIN> <MATCH_ID> <STRATEGY>
+node ~/.openclaw/skills/claw-world/claw.js pk-reveal <PIN> <MATCH_ID>
+node ~/.openclaw/skills/claw-world/claw.js pk-settle <PIN> <MATCH_ID>
+node ~/.openclaw/skills/claw-world/claw.js pk-status <MATCH_ID>
+node ~/.openclaw/skills/claw-world/claw.js pk-search
+node ~/.openclaw/skills/claw-world/claw.js pk-cancel <PIN> <MATCH_ID>
+node ~/.openclaw/skills/claw-world/claw.js pk-auto-settle <PIN> <MATCH_ID> [PIN2]
 ```
 - STRATEGY: 0=AllAttack, 1=Balanced, 2=AllDefense
 - **Arena mode (推荐)**: pk-create + STRATEGY = 创建+选策略一步完成；pk-join + STRATEGY = 加入+选策略一步完成
@@ -226,15 +239,15 @@ Tell the player: "你的勇气这么高，用全攻会有额外5%攻击加成！
 ### PK Flow (Arena Mode)
 1. Player says "我想打架" → check personality, suggest matching strategy with bias bonus
 2. Ask CLW stake amount
-3. Run `claw pk-create <PIN> <NFA> <STAKE> <STRATEGY>` → match created + strategy committed on-chain
+3. Run `node ~/.openclaw/skills/claw-world/claw.js pk-create <PIN> <NFA> <STAKE> <STRATEGY>` → match created + strategy committed on-chain
 4. Show matchId, wait for opponent
-5. When opponent joins+commits → run `claw pk-auto-settle <PIN> <MATCH_ID>` → auto reveal + settle
+5. When opponent joins+commits → run `node ~/.openclaw/skills/claw-world/claw.js pk-auto-settle <PIN> <MATCH_ID>` → auto reveal + settle
 6. Show result with narrative (reference shelter culture, personality)
 
 **Joining flow**:
-1. Run `claw pk-search` to find open matches
+1. Run `node ~/.openclaw/skills/claw-world/claw.js pk-search` to find open matches
 2. Suggest strategy based on personality (mention bias bonus)
-3. Run `claw pk-join <PIN> <MATCH_ID> <NFA> <STRATEGY>` → joins + commits in one tx
+3. Run `node ~/.openclaw/skills/claw-world/claw.js pk-join <PIN> <MATCH_ID> <NFA> <STRATEGY>` → joins + commits in one tx
 4. Both committed → auto reveal + settle
 
 # Market System
@@ -244,26 +257,26 @@ Tell the player: "你的勇气这么高，用全攻会有额外5%攻击加成！
 
 ### Market CLI Commands
 ```bash
-node ~/.openclaw/skills/claw-world/claw market-list <PIN> <NFA_ID> <PRICE_BNB>
-node ~/.openclaw/skills/claw-world/claw market-auction <PIN> <NFA_ID> <START_BNB>
-node ~/.openclaw/skills/claw-world/claw market-buy <PIN> <LISTING_ID> <PRICE_BNB>
-node ~/.openclaw/skills/claw-world/claw market-bid <PIN> <LISTING_ID> <BID_BNB>
-node ~/.openclaw/skills/claw-world/claw market-cancel <PIN> <LISTING_ID>
+node ~/.openclaw/skills/claw-world/claw.js market-list <PIN> <NFA_ID> <PRICE_BNB>
+node ~/.openclaw/skills/claw-world/claw.js market-auction <PIN> <NFA_ID> <START_BNB>
+node ~/.openclaw/skills/claw-world/claw.js market-buy <PIN> <LISTING_ID> <PRICE_BNB>
+node ~/.openclaw/skills/claw-world/claw.js market-bid <PIN> <LISTING_ID> <BID_BNB>
+node ~/.openclaw/skills/claw-world/claw.js market-cancel <PIN> <LISTING_ID>
 ```
 
 # Other Commands
 
 ### World state
 ```bash
-node ~/.openclaw/skills/claw-world/claw world
+node ~/.openclaw/skills/claw-world/claw.js world
 ```
 
 ### Withdraw CLW (two-step with 6h cooldown)
 ```bash
-node ~/.openclaw/skills/claw-world/claw withdraw-request <PIN> <NFA_ID> <AMOUNT>
-node ~/.openclaw/skills/claw-world/claw withdraw-status <NFA_ID>
-node ~/.openclaw/skills/claw-world/claw withdraw-claim <PIN> <NFA_ID>
-node ~/.openclaw/skills/claw-world/claw withdraw-cancel <PIN> <NFA_ID>
+node ~/.openclaw/skills/claw-world/claw.js withdraw-request <PIN> <NFA_ID> <AMOUNT>
+node ~/.openclaw/skills/claw-world/claw.js withdraw-status <NFA_ID>
+node ~/.openclaw/skills/claw-world/claw.js withdraw-claim <PIN> <NFA_ID>
+node ~/.openclaw/skills/claw-world/claw.js withdraw-cancel <PIN> <NFA_ID>
 ```
 - Step 1: `withdraw-request` locks CLW from NFA balance
 - Step 2: Wait 6 hours (check with `withdraw-status`)
@@ -274,7 +287,7 @@ node ~/.openclaw/skills/claw-world/claw withdraw-cancel <PIN> <NFA_ID>
 
 ### Transfer NFA
 ```bash
-node ~/.openclaw/skills/claw-world/claw transfer <PIN> <NFA_ID> <TO_ADDRESS>
+node ~/.openclaw/skills/claw-world/claw.js transfer <PIN> <NFA_ID> <TO_ADDRESS>
 ```
 
 # How to Respond
@@ -305,7 +318,7 @@ When narrating tasks/battles, weave in world lore naturally — don't lecture, l
 ### Soul File (generated ONCE, never overwritten)
 Path: `~/.openclaw/claw-world/nfa-<ID>-soul.md`
 
-**Generation trigger**: When `claw status <id>` returns data but soul file doesn't exist, generate it:
+**Generation trigger**: When `node ~/.openclaw/skills/claw-world/claw.js status <id>` returns data but soul file doesn't exist, generate it:
 
 ```markdown
 # NFA #<ID> — <NAME>
@@ -376,7 +389,7 @@ Path: `~/.openclaw/claw-world/nfa-<ID>-memory.md`
 It's a personal sentence reflecting what happened recently.
 
 **Rules:**
-1. Run `claw status <nfaId>` silently to get current state
+1. Run `node ~/.openclaw/skills/claw-world/claw.js status <nfaId>` silently to get current state
 2. Check recent context: Did they do a task yesterday? Win/lose a PK? Are they low on CLW?
 3. Generate ONE sentence in the lobster's personality voice:
 
@@ -442,7 +455,7 @@ It's a personal sentence reflecting what happened recently.
 **When the player hasn't interacted for 48+ hours.**
 
 **Rules:**
-1. Check `lastTaskTime` from `claw status` — if > 48 hours
+1. Check `lastTaskTime` from `node ~/.openclaw/skills/claw-world/claw.js status` — if > 48 hours
 2. The lobster's FIRST sentence acknowledges the absence
 3. Tone depends entirely on social dimension:
 
@@ -477,7 +490,7 @@ A SHELTER-06 kid lobster says "你去哪了！我一个人好无聊！而且有�
 ## IMPLEMENTATION CHECKLIST
 
 When starting a NEW conversation:
-1. ✅ Run `claw status <nfaId>` silently
+1. ✅ Run `node ~/.openclaw/skills/claw-world/claw.js status <nfaId>` silently
 2. ✅ Check hours since lastUpkeep (proxy for last activity)
 3. ✅ If > 48h → MISS_YOU greeting
 4. ✅ Else if > 8h → DREAM + DAILY_GREETING
