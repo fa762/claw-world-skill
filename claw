@@ -211,7 +211,77 @@ async function cmdPkCreate(pin, nfaId, stake, strategy) {
   }
 }
 
+// ─── PK Scout: view opponent stats before battle ───
+async function cmdPkScout(matchId) {
+  const pkC = new ethers.Contract(CONTRACTS.pk, [
+    'function matches(uint256) view returns (uint256,uint256,bytes32,bytes32,uint8,uint8,uint256,uint8,uint64,bool,bool,bytes32,bytes32)'
+  ], provider);
+  const router = new ethers.Contract(CONTRACTS.router, [
+    'function getLobsterState(uint256) view returns (tuple(uint8 rarity, uint8 shelter, uint8 courage, uint8 wisdom, uint8 social, uint8 create, uint8 grit, uint8 str, uint8 def, uint8 spd, uint8 vit, bytes32 mutation1, bytes32 mutation2, uint16 level, uint32 xp, uint40 lastUpkeep))',
+    'function clwBalances(uint256) view returns (uint256)'
+  ], provider);
+  const taskC = new ethers.Contract(CONTRACTS.task, [
+    'function getTaskStats(uint256) view returns (uint32,uint256,uint32,uint32,uint32,uint32,uint32)'
+  ], provider);
+  const pkStatsC = new ethers.Contract(CONTRACTS.pk, [
+    'function getPkStats(uint256) view returns (uint32,uint32,uint256,uint256)'
+  ], provider);
+
+  const m = await pkC.matches(matchId);
+  const nfaA = m[0].toNumber();
+  const stake = ethers.utils.formatEther(m[6]);
+  const phase = m[7];
+  const phaseNames = ['OPEN','JOINED','COMMITTED','REVEALED','SETTLED','CANCELLED'];
+
+  if (nfaA === 0) { console.log('MATCH_NOT_FOUND'); return null; }
+
+  const [s, bal, ts, ps] = await Promise.all([
+    router.getLobsterState(nfaA),
+    router.clwBalances(nfaA),
+    taskC.getTaskStats(nfaA).catch(() => [0,0,0,0,0,0,0]),
+    pkStatsC.getPkStats(nfaA).catch(() => [0,0,0,0])
+  ]);
+
+  const rNames = ['Common','Rare','Epic','Legendary','Mythic'];
+  const stratNames = ['AllAttack','Balanced','AllDefense'];
+
+  // Strategy suggestion based on opponent personality
+  let suggestedStrategy = 'Balanced';
+  let reason = '';
+  if (s.courage >= 70) { suggestedStrategy = 'AllDefense'; reason = 'opponent courage≥70, likely AllAttack → counter with AllDefense'; }
+  else if (s.grit >= 70) { suggestedStrategy = 'AllAttack'; reason = 'opponent grit≥70, likely AllDefense → counter with AllAttack'; }
+  else if (s.wisdom >= 70) { suggestedStrategy = 'AllAttack'; reason = 'opponent wisdom≥70, likely Balanced → overwhelm with AllAttack'; }
+  else { reason = 'no dominant personality → Balanced is safest'; }
+
+  const result = {
+    matchId: Number(matchId),
+    phase: phaseNames[phase] || String(phase),
+    stake: stake + ' CLW',
+    opponent: {
+      nfaId: nfaA,
+      rarity: rNames[s.rarity] || String(s.rarity),
+      level: s.level,
+      personality: { courage: s.courage, wisdom: s.wisdom, social: s.social, create: s.create, grit: s.grit },
+      dna: { STR: s.str, DEF: s.def, SPD: s.spd, VIT: s.vit },
+      hp: s.vit * 10,
+      clwBalance: parseFloat(ethers.utils.formatEther(bal)),
+      pkRecord: {
+        wins: Number(ps[0]), losses: Number(ps[1]),
+        winRate: (Number(ps[0]) + Number(ps[1])) > 0 ? Math.round(Number(ps[0]) / (Number(ps[0]) + Number(ps[1])) * 100) + '%' : 'N/A'
+      }
+    },
+    suggestion: { strategy: suggestedStrategy, reason }
+  };
+  console.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
 async function cmdPkJoin(pin, matchId, nfaId, strategy) {
+  // Auto-scout opponent before joining
+  console.log('--- SCOUTING OPPONENT ---');
+  await cmdPkScout(matchId);
+  console.log('--- END SCOUT ---');
+
   const wallet = new ethers.Wallet(decryptKey(pin), provider);
 
   // Arena mode: join + commit in one tx
@@ -1005,6 +1075,7 @@ const commands = {
   'pk-settle':  () => cmdPkSettle(args[0], args[1]),
   'pk-cancel':  () => cmdPkCancel(args[0], args[1]),
   'pk-auto-settle': () => cmdPkAutoSettle(args[0], args[1], args[2]),
+  'pk-scout':   () => cmdPkScout(args[0]),
   'pk-search':  () => cmdPkSearch(),
   'pk-status':  () => cmdPkStatus(args[0]),
   'market-list':    () => cmdMarketList(args[0], args[1], args[2]),
@@ -1033,8 +1104,9 @@ if (!cmd || !commands[cmd]) {
   console.log('  claw upkeep <pin> <nfa>                        — process daily upkeep');
   console.log('  claw market-search                             — browse active listings');
   console.log('  claw task <pin> <nfa> <type> <xp> <clw> <score>  — do task');
+  console.log('  claw pk-scout <matchId>                          — scout opponent before PK');
   console.log('  claw pk-create <pin> <nfa> <stake> [strategy]   — create PK (arena: +strategy)');
-  console.log('  claw pk-join <pin> <matchId> <nfa> [strategy]   — join PK (arena: +strategy)');
+  console.log('  claw pk-join <pin> <matchId> <nfa> [strategy]   — join PK (auto-scout + arena)');
   console.log('  claw pk-auto-settle <pin> <matchId> [pin2]      — reveal+settle (auto)');
   console.log('  claw pk-commit <pin> <matchId> <strategy>       — commit (0/1/2) [legacy]');
   console.log('  claw pk-reveal <pin> <matchId>                  — reveal [legacy]');
