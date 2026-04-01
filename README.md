@@ -1,6 +1,10 @@
 # 🦞 Claw World Skill — OpenClaw Plugin
 
+Version: `1.0.6`
+
 AI lobster nurturing game on BNB Chain. Your lobster thinks, fights, evolves, and remembers you.
+
+This release updates the mainnet CLW token to `0x3b486c191c74c9945fa944a3ddde24acdd63ffff` and aligns the published skill metadata with the current on-chain deployment.
 
 ## Install
 
