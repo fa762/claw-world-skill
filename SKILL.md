@@ -1,6 +1,6 @@
 ---
 name: claw-world
-version: 1.0.7
+version: 1.1.0
 description: Claw Civilization Universe - BSC chain AI lobster nurturing game. Manage your lobster NFA, complete tasks, PvP battles, and trade on the marketplace.
 user-invocable: true
 metadata: {"openclaw":{"emoji":"🦞","homepage":"https://clawnfaterminal.xyz"}}
@@ -55,30 +55,25 @@ ZERO是AXIOM的另一半——同一系统的两个核心，一个管秩序（AX
 
 1. **NEVER use `cast call`, `cast send`, or write inline `node -e` scripts for chain data.**
 2. **ALL chain operations MUST use `node ~/.openclaw/skills/claw-world/claw <command>`**
-3. **NEVER show contract addresses, function names, ABI, or technical details to the player.**
+3. **NEVER surface contract addresses, raw function names, ABI, or internal RPC details in player-facing conversation.** (The CLI scripts contain these internally; do not volunteer them in chat.)
 4. **NEVER show slash commands to the player.** Players use natural language only.
 5. When the player asks for help, explain what they can DO (做任务、打架、交易、查状态), NOT commands.
 6. First time only: run `cd ~/.openclaw/skills/claw-world && npm install 2>/dev/null` if scripts fail.
 
-## CML Memory Lifecycle (Auto)
+## CML Memory Lifecycle (AI-driven)
 
-Claw World now treats each NFA as having its own local + chain-linked memory lifecycle.
+Each NFA has a local `.cml` memory file managed by the AI through explicit CLI calls:
 
-- When a user talks to an NFA for the first time, the skill auto-initializes a `.cml` file for that NFA.
-- During conversation, meaningful snippets are buffered into HIPPOCAMPUS.
-- When the conversation ends or times out, the skill automatically runs SLEEP consolidation.
-- The new `.cml` is saved locally, archived, and its `learningTreeRoot` is updated onchain.
-- If Greenfield is available on the machine, the skill also uploads `latest.cml`, an archive copy, and a lightweight public summary object.
+- **Boot**: `claw boot` auto-initializes the `.cml` file if it does not exist yet (migrate from legacy soul+memory, or create fresh from chain data).
+- **During conversation**: the AI mentally tracks meaningful snippets (HIPPOCAMPUS buffer, max 5 entries) — no background process runs.
+- **At conversation end**: the AI explicitly calls `claw cml-load <id> --full` then `claw cml-save <id>` to write the consolidated memory. This is an AI action, not an automatic daemon.
+- **Onchain proof**: `claw cml-save <id> [pin]` optionally calls `updateLearningTreeByOwner` to record the memory hash onchain. Requires PIN.
+- **Greenfield upload** (optional, requires `gnfd-cmd` in WSL): if present, `claw cml-save` also uploads `latest.cml` and an archive copy to a BNB Greenfield bucket derived from the owner wallet address.
 
 User-facing expectation:
-- the user just chats
-- the lobster remembers later
-- memory writing and chain proof stay invisible in the background
-
-Greenfield note:
-- full Greenfield upload requires `gnfd-cmd` in the local WSL/Linux environment
-- the current OpenClaw wallet is used as the uploader/owner-side signer
-- the NFA remains the memory subject; the wallet only acts as the current writer
+- the player just chats naturally
+- the lobster remembers across sessions
+- all memory writes happen through the CLI commands the AI calls explicitly
 
 # Game Overview
 
