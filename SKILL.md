@@ -1,6 +1,6 @@
 ---
 name: claw-world
-version: 1.1.4
+version: 1.1.5
 description: Claw Civilization Universe - BSC chain AI lobster nurturing game. Manage your lobster NFA, complete tasks, PvP battles, and trade on the marketplace.
 user-invocable: true
 metadata:
@@ -76,11 +76,20 @@ ZERO是AXIOM的另一半——同一系统的两个核心，一个管秩序（AX
 
 Claw World now treats each NFA as having its own local + chain-linked memory lifecycle.
 
+<<<<<<< HEAD
 - When a user talks to an NFA for the first time, the skill auto-initializes a `.cml` file for that NFA.
 - During conversation, meaningful snippets are buffered into HIPPOCAMPUS.
 - When the conversation ends or times out, the skill automatically runs SLEEP consolidation.
 - The new `.cml` is saved locally, archived, and its `learningTreeRoot` is updated onchain.
 - If Greenfield is available on the machine, the skill also uploads `latest.cml`, an archive copy, and a lightweight public summary object.
+=======
+- **Boot**: `claw boot` auto-initializes the `.cml` file if it does not exist yet (migrate from legacy soul+memory, or create fresh from chain data). This is the full session bootstrap.
+- **Quick ownership check**: `claw owned` returns wallet + owned NFA summary only, without loading full CML / legacy memory / task / PK details.
+- **During conversation**: the AI mentally tracks meaningful snippets (HIPPOCAMPUS buffer, max 5 entries) — no background process runs.
+- **At conversation end**: the AI explicitly calls `claw cml-load <id> --full` then `claw cml-save <id>` to write the consolidated memory locally. This is an AI action, not an automatic daemon.
+- **Onchain proof**: `claw cml-save <id> <pin>` attempts to call `updateLearningTreeByOwner` to record the memory hash onchain. Without PIN, local save can still succeed but root sync may remain pending (`rootSynced: false`, e.g. `pendingReason: "NO_PIN"`).
+- **Greenfield upload** (optional, requires `gnfd-cmd` in WSL): if present, `claw cml-save` may also upload `latest.cml` and an archive copy to a BNB Greenfield bucket derived from the owner wallet address.
+>>>>>>> 9997860 (fix: align skill runtime and docs)
 
 User-facing expectation:
 - the user just chats
@@ -169,22 +178,30 @@ When player says "做任务":
 
 # ⚡ EVERY NEW CONVERSATION — Mandatory Boot
 
-**Your FIRST action in EVERY new conversation. No exceptions. No skipping.**
+**Your FIRST action in EVERY new conversation for full roleplay/session context. No exceptions. No skipping.**
 
 ```bash
 node ~/.openclaw/skills/claw-world/claw boot
 ```
 
-This single command does everything: checks wallet, scans NFAs, loads soul+memory, checks emotion trigger.
+For lightweight ownership checks only, use:
+
+```bash
+node ~/.openclaw/skills/claw-world/claw owned
+```
+
+`claw boot` is the heavy/full initializer: checks wallet, scans NFAs, loads CML, preserves legacy fallback data, and checks emotion trigger.
 
 ### Reading the boot output:
 
 The command returns JSON with:
 - `status`: "OK" or "NO_WALLET"
-- `ownedNFAs`: array of all NFAs with full stats, soul content, memories
+- `ownedNFAs`: array of all NFAs with full stats and CML as the primary memory structure
 - `selectRequired`: true if player has multiple NFAs (ask them to pick)
 - `emotionTrigger`: "MISS_YOU" (48h+), "DREAM" (8h+), or "DAILY_GREETING"
 - `instructions`: what to do next
+
+Each NFA may also include `legacy` compatibility data (`hasSoul`, `soulContent`, `hasMemory`, `recentMemories`) while old files still exist, but `cml` is the authoritative memory source.
 
 ### After boot:
 1. If `NO_WALLET` → ask PIN, create wallet
@@ -198,7 +215,9 @@ The command returns JSON with:
 9. Apply `emotionTrigger` + `cml.pulse.longing` → generate opening line
 10. Respond in character. **NEVER respond before boot completes.**
 
-> **Legacy fallback**: If `hasCML` is false (shouldn't happen, boot auto-creates), fall back to `soulContent` + `recentMemories`.
+> `claw owned` is only for quick ownership/list checks. It does not replace `boot` when you need full session memory/personality context.
+
+> **Legacy fallback**: If `hasCML` is false (shouldn't happen, boot auto-creates), fall back to `legacy.soulContent` + `legacy.recentMemories`.
 
 # First Time Setup (wallet creation only)
 
@@ -272,7 +291,7 @@ node ~/.openclaw/skills/claw-world/claw pk-cancel <PIN> <MATCH_ID>
 node ~/.openclaw/skills/claw-world/claw pk-auto-settle <PIN> <MATCH_ID> [PIN2]
 ```
 - STRATEGY: 0=AllAttack, 1=Balanced, 2=AllDefense
-- **pk-scout**: 加入 PK 前自动侦察对手属性、DNA、胜率，并给出策略建议
+- **pk-scout**: 侦察的是对局/擂台（`matchId`），不是单只 NFA。用于加入前查看该 match 创建者的属性、DNA、胜率，并给出策略建议
 - **Arena mode (推荐)**: pk-create + STRATEGY = 创建+选策略一步完成；pk-join + STRATEGY = 加入+选策略+自动侦察一步完成
 - pk-auto-settle: 自动 reveal 双方 + settle（PIN2 用于自战测试）
 - pk-search: list all active matches
@@ -287,7 +306,7 @@ node ~/.openclaw/skills/claw-world/claw pk-auto-settle <PIN> <MATCH_ID> [PIN2]
 Tell the player: "你的勇气这么高，用全攻会有额外5%攻击加成！" when applicable.
 
 ### PK Flow (Arena Mode)
-**Joining a match (IMPORTANT — always scout first):**
+**Joining a match (IMPORTANT — always scout the match first):**
 1. Player says "我想加入擂台X" → run `claw pk-scout X` first
 2. Show opponent's full stats: rarity, level, DNA (STR/DEF/SPD/VIT), personality, HP, PK record
 3. Show the AI strategy suggestion with reason
@@ -471,6 +490,16 @@ SLEEP 流程：
 echo '<完整CML JSON>' | node ~/.openclaw/skills/claw-world/claw cml-save <tokenId>
 ```
 
+如需尝试链上/root 同步，则显式带 PIN：
+
+```bash
+echo '<完整CML JSON>' | node ~/.openclaw/skills/claw-world/claw cml-save <tokenId> <PIN>
+```
+
+不带 PIN 时，本地保存仍可成功，但可能返回：
+- `rootSynced: false`
+- `pendingReason: "NO_PIN"`
+
 5. 如果保存成功，输出确认。
 
 **重要规则：**
@@ -486,7 +515,8 @@ claw cml-load <tokenId>                  # 加载轻量 CML（boot 用，仅 tri
 claw cml-load <tokenId> --full           # 加载完整 CML（SLEEP 前使用，含全量 vivid 和 sediment）
 claw cml-recall <tokenId> <id1,id2,...>  # 按 ID 获取完整记忆
 claw cml-match <tokenId> <消息>           # 关键词匹配触发记忆
-echo '<JSON>' | claw cml-save <tokenId>  # 保存新 CML（从 stdin 读 JSON）
+echo '<JSON>' | claw cml-save <tokenId>  # 仅本地保存 CML
+echo '<JSON>' | claw cml-save <tokenId> <PIN>  # 本地保存 + 尝试链上/root 同步
 ```
 
 ### 从旧系统迁移
@@ -512,7 +542,8 @@ Boot → 加载 CML (identity/pulse/prefrontal/basal/triggerIndex)
 
 结束 → 触发 SLEEP
   → 生成完整新 CML JSON
-  → cml-save 写入磁盘
+  → cml-save 写入本地磁盘
+  → 如有 PIN 再尝试 root sync
   → 下次对话带着新记忆醒来
 ```
 
