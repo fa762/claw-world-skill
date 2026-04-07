@@ -76,20 +76,13 @@ ZERO是AXIOM的另一半——同一系统的两个核心，一个管秩序（AX
 
 Claw World now treats each NFA as having its own local + chain-linked memory lifecycle.
 
-<<<<<<< HEAD
-- When a user talks to an NFA for the first time, the skill auto-initializes a `.cml` file for that NFA.
-- During conversation, meaningful snippets are buffered into HIPPOCAMPUS.
-- When the conversation ends or times out, the skill automatically runs SLEEP consolidation.
-- The new `.cml` is saved locally, archived, and its `learningTreeRoot` is updated onchain.
-- If Greenfield is available on the machine, the skill also uploads `latest.cml`, an archive copy, and a lightweight public summary object.
-=======
 - **Boot**: `claw boot` auto-initializes the `.cml` file if it does not exist yet (migrate from legacy soul+memory, or create fresh from chain data). This is the full session bootstrap.
+- **Runtime check**: `claw env` returns version, network/mainnet status, wallet presence, and update hint only. It does not scan NFAs or load memory.
 - **Quick ownership check**: `claw owned` returns wallet + owned NFA summary only, without loading full CML / legacy memory / task / PK details.
 - **During conversation**: the AI mentally tracks meaningful snippets (HIPPOCAMPUS buffer, max 5 entries) — no background process runs.
 - **At conversation end**: the AI explicitly calls `claw cml-load <id> --full` then `claw cml-save <id>` to write the consolidated memory locally. This is an AI action, not an automatic daemon.
-- **Onchain proof**: `claw cml-save <id> <pin>` attempts to call `updateLearningTreeByOwner` to record the memory hash onchain. Without PIN, local save can still succeed but root sync may remain pending (`rootSynced: false`, e.g. `pendingReason: "NO_PIN"`).
+- **Local save vs root sync**: `claw cml-save <id>` saves locally. `claw cml-save <id> <pin>` saves locally and then attempts root/onchain sync. Without PIN, local save can still succeed while root sync remains pending (`rootSynced: false`, `pendingReason: "NO_PIN"`).
 - **Greenfield upload** (optional, requires `gnfd-cmd` in WSL): if present, `claw cml-save` may also upload `latest.cml` and an archive copy to a BNB Greenfield bucket derived from the owner wallet address.
->>>>>>> 9997860 (fix: align skill runtime and docs)
 
 User-facing expectation:
 - the user just chats
@@ -184,6 +177,12 @@ When player says "做任务":
 node ~/.openclaw/skills/claw-world/claw boot
 ```
 
+For lightweight runtime checks only, use:
+
+```bash
+node ~/.openclaw/skills/claw-world/claw env
+```
+
 For lightweight ownership checks only, use:
 
 ```bash
@@ -191,6 +190,10 @@ node ~/.openclaw/skills/claw-world/claw owned
 ```
 
 `claw boot` is the heavy/full initializer: checks wallet, scans NFAs, loads CML, preserves legacy fallback data, and checks emotion trigger.
+
+`claw env` is the lightweight runtime check: version, network/mainnet status, wallet presence, and update hint only.
+
+`claw owned` is the lightweight ownership check: wallet + owned NFA summary only.
 
 ### Reading the boot output:
 
@@ -222,8 +225,8 @@ Each NFA may also include `legacy` compatibility data (`hasSoul`, `soulContent`,
 # First Time Setup (wallet creation only)
 
 1. If no wallet.json → ask PIN, create wallet
-2. Check network: `cat ~/.openclaw/claw-world/network.conf 2>/dev/null`
-   - If not set → ask "测试网还是主网？", save to file
+2. Check network quickly: `node ~/.openclaw/skills/claw-world/claw env`
+   - If not set → ask "测试网还是主网？", save to `~/.openclaw/claw-world/network.conf`
 3. After wallet created, **MUST** show this message to player in the user's language:
 
 ```
@@ -496,7 +499,9 @@ echo '<完整CML JSON>' | node ~/.openclaw/skills/claw-world/claw cml-save <toke
 echo '<完整CML JSON>' | node ~/.openclaw/skills/claw-world/claw cml-save <tokenId> <PIN>
 ```
 
-不带 PIN 时，本地保存仍可成功，但可能返回：
+不带 PIN 时，本地保存仍可成功，且输出应理解为“本地已保存、root 同步未尝试或仍待完成”，常见字段包括：
+- `localSaved: true`
+- `rootSyncAttempted: false`
 - `rootSynced: false`
 - `pendingReason: "NO_PIN"`
 
