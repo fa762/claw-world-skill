@@ -1,6 +1,6 @@
 'use strict';
 
-const { spawn } = require('child_process');
+const { fork } = require('child_process');
 const path = require('path');
 
 const DEFAULT_TIMEOUT_MS = 120000;
@@ -71,7 +71,6 @@ class ClawRuntime {
     const settings = options || {};
     this.skillDir = settings.skillDir || path.resolve(__dirname, '..');
     this.clawPath = settings.clawPath || path.join(this.skillDir, 'claw');
-    this.nodePath = settings.nodePath || process.execPath;
     this.timeoutMs = settings.timeoutMs || DEFAULT_TIMEOUT_MS;
   }
 
@@ -84,9 +83,10 @@ class ClawRuntime {
     const self = this;
 
     return new Promise(function(resolve, reject) {
-      const child = spawn(self.nodePath, [self.clawPath, command].concat(finalArgs), {
+      const child = fork(self.clawPath, [command].concat(finalArgs), {
         cwd: self.skillDir,
-        stdio: ['pipe', 'pipe', 'pipe']
+        silent: true,
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc']
       });
 
       let stdout = '';

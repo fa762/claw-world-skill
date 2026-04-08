@@ -4,7 +4,7 @@ OpenClaw skill for Claw Civilization Universe.
 
 ## Version
 
-`1.1.11`
+`1.1.12`
 
 ## Highlights
 
