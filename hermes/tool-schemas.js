@@ -307,7 +307,7 @@ function createToolManifest(options) {
   return {
     protocol: 'openclaw-hermes-tools/v1',
     adapter: 'claw-world-hermes',
-    version: settings.version || '1.1.10',
+    version: settings.version || '1.1.11',
     runtime: {
       entrypoint: settings.entrypoint || 'node hermes/cli.js call <tool> [json-input]',
       manifestCommand: settings.manifestCommand || 'node hermes/cli.js manifest',
